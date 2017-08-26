@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 
 void threadf();
@@ -60,7 +61,7 @@ calcsum ()
   while(flag != 1) {
     sum += 1;
     int t = 3;
-    wait(&t);
+    sleep(t);
   }
   return sum;
 }
