@@ -14,6 +14,14 @@
 #include "queue_nl.h"
 #include "threadpool.h"
 
+/*
+ * Function that all pool theads run for their lifetime.
+ * When pa_kill is set the threads will kill themselves. This is
+ * so that the threadpool does not have to hold references to all child
+ * threads. 
+ *
+ * @param arg a pointer to the thread pool to operate on
+ */ 
 void
 thread_life (void *arg)
 {
@@ -26,7 +34,7 @@ thread_life (void *arg)
     // we now hold the lock
     
     // see if we should kill ourselves
-    if (pl->pa_kill) {
+    if (!pl || pl->pa_kill) {
       pthread_cond_signal(pl->p_cond);
       pthread_mutex_unlock(pl->p_lock);
       pl->pa_threads--;
@@ -46,6 +54,13 @@ thread_life (void *arg)
   }
 }
 
+/*
+ * Spins up n number of threads.
+ * NOTE: DOES NOT keep a reference to threads launched.
+ * @param p the threadpool to signal
+ * @param n the number of threads to start
+ * @return 0 on success
+ */
 int
 pool_spin_threads (pool_t *p, int n)
 {
@@ -59,6 +74,11 @@ pool_spin_threads (pool_t *p, int n)
   return 0;
 }
 
+/*
+ * Signals all threads to end and waits for them.
+ * @param p the threadpool to signal
+ * @return 0 on success
+ */
 int
 pool_join_threads (pool_t *p)
 {

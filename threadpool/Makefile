@@ -21,3 +21,7 @@ clean:
 	rm -rf *~
 	rm -rf *.o
 	rm -rf *.so
+	@rm -rf *.dSYM
+	@rm -f queue_test
+	@rm -f lthread
+	@rm -f thread_test
