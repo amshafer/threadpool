@@ -67,6 +67,8 @@ qnl_init ()
 int
 qnl_destroy (qnl_t *q)
 {
+  if (!q) return -1;
+
   pthread_mutex_destroy(q->q_lock);
   free(q->q_lock);
   // free items in list if we are able
@@ -84,7 +86,7 @@ qnl_destroy (qnl_t *q)
 int
 qnl_enqueue (qnl_t *q, QDATA_T in)
 {
-  if (!q) return -1;
+  if (!q || !in) return -1;
   
   qnode_t *qn = qnode_init(in, NULL);
   
@@ -134,9 +136,18 @@ qnl_dequeue (qnl_t *q)
 QDATA_T
 qnl_peek (qnl_t *q)
 {
+  if (!q) return NULL;
+
   return q->q_next->qn_data;
 }
 
+/*
+ * Initializes a struct holding a function and its parameter struct.
+ * Used to hold a queue of work to execute.
+ * @param exec_f pointer to function to work with
+ * @param a pointer to exec_f's argument structure
+ * @return a new qnl_exec_t struct
+ */
 qnl_exec_t *
 qnl_exec_init (void (*exec_f)(void *), void *a)
 {

@@ -3,7 +3,6 @@
  * 
  * A simple queue.
  *
- * Austin Shafer - 2017
  */
 #ifndef _QNL_H_
 #define _QNL_H_
@@ -29,7 +28,6 @@ void qnl_exec_destroy (qnl_exec_t *qe);
 /*
  * A node in a linked list queue.
  * Singly linked for simplicity.
- *
  */
 struct _qnode_t {
   QDATA_T qn_data;                  // the data in this node

@@ -25,6 +25,8 @@
 void
 thread_life (void *arg)
 {
+  if (!arg) return; 
+
   pool_t *pl = (pool_t *)arg;
 
   // continuously get work off of queue and run it
@@ -137,12 +139,13 @@ pool_destroy (pool_t *out)
 int
 pool_exec (pool_t *in, void (*exec_f)(void *), void *arg)
 {
-  if (!in || !exec_f) return -1;
+  if (!in || !exec_f || !arg) return -1;
   
   // signal condition after work is added
   qnl_exec_t *qe = qnl_exec_init(exec_f, arg);
   qnl_enqueue(in->p_work, qe);
 
+  // If this is the first job signal work is available
   if (in->p_work->qa_size == 1) {
     pthread_mutex_lock(in->p_lock);
     pthread_cond_signal(in->p_cond);
