@@ -40,7 +40,7 @@ qnode_init (QDATA_T d, qnode_t *n)
 int
 qnode_destroy (qnode_t *out)
 {
-  if (!out) return -1;
+  if (!out) return QERROR;
 
   if (out->qn_data) {
     Q_FREE(out->qn_data);
@@ -67,7 +67,7 @@ qnl_init ()
 int
 qnl_destroy (qnl_t *q)
 {
-  if (!q) return -1;
+  if (!q) return QERROR;
 
   pthread_mutex_destroy(q->q_lock);
   free(q->q_lock);
@@ -86,7 +86,7 @@ qnl_destroy (qnl_t *q)
 int
 qnl_enqueue (qnl_t *q, QDATA_T in)
 {
-  if (!q || !in) return -1;
+  if (!q || !in) return QERROR;
   
   qnode_t *qn = qnode_init(in, NULL);
   

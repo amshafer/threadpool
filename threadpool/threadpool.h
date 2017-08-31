@@ -11,6 +11,9 @@
 #ifndef _THREADPOOL_H_
 #define _THREADPOOL_H_
 
+// Threadpool error return code
+#define TPERROR 11
+
 /*
  * The threadpool structure
  * 

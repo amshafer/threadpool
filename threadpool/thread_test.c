@@ -44,7 +44,7 @@ main (int argc, char *argv[])
     pool_exec(p, &print_func, pt);
   }
   printf("giving threads time to finish...\n");
-  sleep(2);
+  sleep(1);
   pool_destroy(p);
   
   return 0;

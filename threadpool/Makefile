@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -g -Wall -pthread
+CFLAGS = -g -Wall -pthread -std=c11
 
 
 

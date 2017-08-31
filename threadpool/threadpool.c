@@ -66,7 +66,7 @@ thread_life (void *arg)
 int
 pool_spin_threads (pool_t *p, int n)
 {
-  if (n < 1 || !p) return -1;
+  if (n < 1 || !p) return TPERROR;
 
   for (int i = 0; i < n; i++) {
     pthread_t cur;
@@ -84,7 +84,7 @@ pool_spin_threads (pool_t *p, int n)
 int
 pool_join_threads (pool_t *p)
 {
-  if (!p) return -1;
+  if (!p) return TPERROR;
 
   // set kill and signal condition
   p->pa_kill = 1;
@@ -139,7 +139,7 @@ pool_destroy (pool_t *out)
 int
 pool_exec (pool_t *in, void (*exec_f)(void *), void *arg)
 {
-  if (!in || !exec_f || !arg) return -1;
+  if (!in || !exec_f) return TPERROR;
   
   // signal condition after work is added
   qnl_exec_t *qe = qnl_exec_init(exec_f, arg);

@@ -12,6 +12,9 @@
 // custom free function to destroy QDATA_T objects
 #define Q_FREE(arg) free(arg)
 
+// queue error return code
+#define QERROR 13
+
 /*
  * struct to hold function pointers to return
  *
@@ -48,7 +51,7 @@ typedef struct _qnode_t qnode_t;
  *       qnl_destroy(queue);
  */
 struct queue_t {
-  atomic_int qa_size;                // The size of the queue
+  atomic_int qa_size;               // The size of the queue
   qnode_t *q_next;                  // the head of the list
   qnode_t *q_tail;                  // the end of the list
   // NOTE: maybe one day I will be smart enough to make this atomic ;)
