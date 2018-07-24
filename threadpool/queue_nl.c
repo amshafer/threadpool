@@ -24,12 +24,12 @@
 qnode_t *
 qnode_init (QDATA_T d, qnode_t *n)
 {
-  qnode_t *ret;
-  ret = malloc(sizeof(qnode_t));
-  ret->qn_data = d;
-  ret->qn_next = n;
+	qnode_t *ret;
+	ret = malloc(sizeof(qnode_t));
+	ret->qn_data = d;
+	ret->qn_next = n;
 
-  return ret;
+	return ret;
 }
 
 /*
@@ -40,105 +40,105 @@ qnode_init (QDATA_T d, qnode_t *n)
 int
 qnode_destroy (qnode_t *out)
 {
-  if (!out) return QERROR;
+	if (!out) return QERROR;
 
-  if (out->qn_data) {
-    Q_FREE(out->qn_data);
-  }
-  free(out);
-  return 0;
+	if (out->qn_data) {
+		Q_FREE(out->qn_data);
+	}
+	free(out);
+	return 0;
 }
 
 qnl_t *
 qnl_init ()
 {
-  qnl_t *ret;
-  ret = malloc(sizeof(qnl_t));
-  ret->q_lock = malloc(sizeof(pthread_mutex_t));
-  pthread_mutex_init(ret->q_lock, NULL);
+	qnl_t *ret;
+	ret = malloc(sizeof(qnl_t));
+	ret->q_lock = malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(ret->q_lock, NULL);
 
-  ret->qa_size = 0;
-  ret->q_next = NULL;
-  ret->q_tail = NULL;
+	ret->qa_size = 0;
+	ret->q_next = NULL;
+	ret->q_tail = NULL;
   
-  return ret;
+	return ret;
 }
 
 int
 qnl_destroy (qnl_t *q)
 {
-  if (!q) return QERROR;
+	if (!q) return QERROR;
 
-  pthread_mutex_destroy(q->q_lock);
-  free(q->q_lock);
-  // free items in list if we are able
-  for (qnode_t *c = q->q_next; c != NULL;) {
-    qnode_t *t = c;
-    c = c->qn_next;
-    // use custom free function since we dont know the type
-    qnode_destroy(t);
-  }
+	pthread_mutex_destroy(q->q_lock);
+	free(q->q_lock);
+	// free items in list if we are able
+	for (qnode_t *c = q->q_next; c != NULL;) {
+		qnode_t *t = c;
+		c = c->qn_next;
+		// use custom free function since we dont know the type
+		qnode_destroy(t);
+	}
 
-  free(q);
-  return 0;
+	free(q);
+	return 0;
 }
 
 int
 qnl_enqueue (qnl_t *q, QDATA_T in)
 {
-  if (!q || !in) return QERROR;
+	if (!q || !in) return QERROR;
   
-  qnode_t *qn = qnode_init(in, NULL);
+	qnode_t *qn = qnode_init(in, NULL);
   
-  pthread_mutex_lock(q->q_lock); 
-  // first elemenet case
-  if (!q->q_next) {
-    q->q_next = qn;
-    q->q_tail = q->q_next;
-  } else {
+	pthread_mutex_lock(q->q_lock); 
+	// first elemenet case
+	if (!q->q_next) {
+		q->q_next = qn;
+		q->q_tail = q->q_next;
+	} else {
 
-    // add to end of queue
-    q->q_tail->qn_next = qn;
-    q->q_tail = qn;
-  }
-  q->qa_size++;
-  pthread_mutex_unlock(q->q_lock);
-  return 0;
+		// add to end of queue
+		q->q_tail->qn_next = qn;
+		q->q_tail = qn;
+	}
+	q->qa_size++;
+	pthread_mutex_unlock(q->q_lock);
+	return 0;
 }
 
 QDATA_T
 qnl_dequeue (qnl_t *q)
 {
-  if (!q) return NULL;
-  qnode_t *r = NULL;
+	if (!q) return NULL;
+	qnode_t *r = NULL;
   
-  pthread_mutex_lock(q->q_lock);
-  // 0th and 1st element cases
-  if (q->qa_size == 0) {
-    return NULL;
-  } else if (q->qa_size == 1) {
-    r = q->q_next;
-    q->q_next = q->q_tail = NULL;
-  } else {
-    r = q->q_next;
-    q->q_next = q->q_next->qn_next;
-  }
+	pthread_mutex_lock(q->q_lock);
+	// 0th and 1st element cases
+	if (q->qa_size == 0) {
+		return NULL;
+	} else if (q->qa_size == 1) {
+		r = q->q_next;
+		q->q_next = q->q_tail = NULL;
+	} else {
+		r = q->q_next;
+		q->q_next = q->q_next->qn_next;
+	}
 
-  q->qa_size--;
-  pthread_mutex_unlock(q->q_lock);
-  QDATA_T ret = r->qn_data;
-  // change qn_data so we dont accidently delete it
-  r->qn_data = NULL;
-  qnode_destroy(r);
-  return ret;
+	q->qa_size--;
+	pthread_mutex_unlock(q->q_lock);
+	QDATA_T ret = r->qn_data;
+	// change qn_data so we dont accidently delete it
+	r->qn_data = NULL;
+	qnode_destroy(r);
+	return ret;
 }
 
 QDATA_T
 qnl_peek (qnl_t *q)
 {
-  if (!q) return NULL;
+	if (!q) return NULL;
 
-  return q->q_next->qn_data;
+	return q->q_next->qn_data;
 }
 
 /*
@@ -151,9 +151,9 @@ qnl_peek (qnl_t *q)
 qnl_exec_t *
 qnl_exec_init (void (*exec_f)(void *), void *a)
 {
-  qnl_exec_t *qe;
-  qe = malloc(sizeof(qnl_exec_t));
-  qe->qe_func = exec_f;
-  qe->qe_arg = a;
-  return qe;
+	qnl_exec_t *qe;
+	qe = malloc(sizeof(qnl_exec_t));
+	qe->qe_func = exec_f;
+	qe->qe_arg = a;
+	return qe;
 }

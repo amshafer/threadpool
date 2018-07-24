@@ -20,8 +20,8 @@
  *
  */
 typedef struct {
-  void (*qe_func)(void *);
-  void *qe_arg;
+	void (*qe_func)(void *);
+	void *qe_arg;
 } qnl_exec_t;
 
 qnl_exec_t *qnl_exec_init();
@@ -33,8 +33,8 @@ void qnl_exec_destroy (qnl_exec_t *qe);
  * Singly linked for simplicity.
  */
 struct _qnode_t {
-  QDATA_T qn_data;                  // the data in this node
-  struct _qnode_t *qn_next;         // the next node in the chain
+	QDATA_T qn_data;                  // the data in this node
+	struct _qnode_t *qn_next;         // the next node in the chain
 };
 
 // for ease of writing
@@ -51,11 +51,11 @@ typedef struct _qnode_t qnode_t;
  *       qnl_destroy(queue);
  */
 struct queue_t {
-  atomic_int qa_size;               // The size of the queue
-  qnode_t *q_next;                  // the head of the list
-  qnode_t *q_tail;                  // the end of the list
-  // NOTE: maybe one day I will be smart enough to make this atomic ;)
-  pthread_mutex_t *q_lock;          // Lock to add/remove from queue
+	atomic_int qa_size;               // The size of the queue
+	qnode_t *q_next;                  // the head of the list
+	qnode_t *q_tail;                  // the end of the list
+	// NOTE: maybe one day I will be smart enough to make this atomic ;)
+	pthread_mutex_t *q_lock;          // Lock to add/remove from queue
 };
 
 typedef struct queue_t qnl_t;

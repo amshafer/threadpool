@@ -20,11 +20,11 @@
  *
  */
 struct pool_tag {
-  atomic_int pa_threads;     // the number of current threads
-  atomic_bool pa_kill;       // Flag to kill all threads
-  qnl_t *p_work;             // the queue of available work
-  pthread_mutex_t *p_lock;   // the mutex used to wait for work
-  pthread_cond_t *p_cond;    // signaled when there is work in the queue
+	atomic_int pa_threads;     // the number of current threads
+	atomic_bool pa_kill;       // Flag to kill all threads
+	qnl_t *p_work;             // the queue of available work
+	pthread_mutex_t *p_lock;   // the mutex used to wait for work
+	pthread_cond_t *p_cond;    // signaled when there is work in the queue
 };
 
 // for ease of use
