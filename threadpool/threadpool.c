@@ -37,18 +37,19 @@ thread_life (void *arg)
 	if (!arg) return; 
 
 	pool_t *pl = (pool_t *)arg;
-	pthread_mutex_lock(pl->p_lock);
+
 
 	// continuously get work off of queue and run it
 	while (1) {
-		POOL_LOG("Waiting for condition var...\n");
-		pthread_cond_wait(pl->p_cond, pl->p_lock);
-		// we now hold the lock
+		pthread_mutex_lock(pl->p_lock);
+
+		// if there is no work and we dont need to die go to sleep
+		while (qnl_size(pl->p_work) == 0 && !pl->pa_kill)
+			pthread_cond_wait(pl->p_cond, pl->p_lock);
     
 		// see if we should kill ourselves
 		if (!pl || pl->pa_kill) {
 			pl->pa_threads--;
-			POOL_LOG("Signaling condition var...\n");
 			pthread_cond_signal(pl->p_cond);
 			pthread_mutex_unlock(pl->p_lock);
 			pthread_exit(NULL);
@@ -57,14 +58,13 @@ thread_life (void *arg)
 		// condition signals that queue holds work. Dequeue and run.
 		qnl_exec_t *task = qnl_dequeue(pl->p_work);
 
-		if (qnl_size(pl->p_work) > 0) {
-			// if more work to do then signal condition
-			POOL_LOG("Signaling condition var...\n");
+		// if more work to do then signal condition
+		if (qnl_size(pl->p_work) > 0)
 			pthread_cond_signal(pl->p_cond);
-		} else {
-			printf("skipping signal\n");
-		}
-		// execute function call
+
+		pthread_mutex_unlock(pl->p_lock);
+		
+		// unlock and execute function call
 		if (task && task->qe_func)
 			task->qe_func(task->qe_arg);
 	}
