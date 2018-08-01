@@ -76,6 +76,12 @@ qnl_t *qnl_init();
 int qnl_destroy(qnl_t *q);
 
 /*
+ * get the size of the queue
+ * @param q the queue to size up
+ */
+int qnl_size(qnl_t *q);
+
+/*
  * Adds an element to the end of the queue.
  * @param q the queue to add to.
  * @param in the data to add as a new element.

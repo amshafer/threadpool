@@ -14,6 +14,15 @@
 #include "queue_nl.h"
 #include "threadpool.h"
 
+/* uncomment to print all debug info */
+//#define WITH_LOGGING
+
+#ifdef WITH_LOGGING
+# define POOL_LOG(args) printf((args))
+#else
+# define POOL_LOG(args) 
+#endif /* WITH_LOGGING */
+
 /*
  * Function that all pool theads run for their lifetime.
  * When pa_kill is set the threads will kill themselves. This is
@@ -28,16 +37,18 @@ thread_life (void *arg)
 	if (!arg) return; 
 
 	pool_t *pl = (pool_t *)arg;
+	pthread_mutex_lock(pl->p_lock);
 
 	// continuously get work off of queue and run it
 	while (1) {
-		pthread_mutex_lock(pl->p_lock);
+		POOL_LOG("Waiting for condition var...\n");
 		pthread_cond_wait(pl->p_cond, pl->p_lock);
 		// we now hold the lock
     
 		// see if we should kill ourselves
 		if (!pl || pl->pa_kill) {
 			pl->pa_threads--;
+			POOL_LOG("Signaling condition var...\n");
 			pthread_cond_signal(pl->p_cond);
 			pthread_mutex_unlock(pl->p_lock);
 			pthread_exit(NULL);
@@ -46,13 +57,16 @@ thread_life (void *arg)
 		// condition signals that queue holds work. Dequeue and run.
 		qnl_exec_t *task = qnl_dequeue(pl->p_work);
 
-		if (pl->p_work->qa_size > 0) {
+		if (qnl_size(pl->p_work) > 0) {
 			// if more work to do then signal condition
+			POOL_LOG("Signaling condition var...\n");
 			pthread_cond_signal(pl->p_cond);
+		} else {
+			printf("skipping signal\n");
 		}
-		pthread_mutex_unlock(pl->p_lock);
 		// execute function call
-		task->qe_func(task->qe_arg);
+		if (task && task->qe_func)
+			task->qe_func(task->qe_arg);
 	}
 }
 
@@ -143,14 +157,17 @@ pool_exec (pool_t *in, void (*exec_f)(void *), void *arg)
   
 	// signal condition after work is added
 	qnl_exec_t *qe = qnl_exec_init(exec_f, arg);
+
+	// we need to follow proper lock order. pool lock, then enqueue
+	pthread_mutex_lock(in->p_lock);
 	qnl_enqueue(in->p_work, qe);
 
 	// If this is the first job signal work is available
-	if (in->p_work->qa_size == 1) {
-		pthread_mutex_lock(in->p_lock);
+	if (qnl_size(in->p_work) == 1) {
+		POOL_LOG("Signaling condition var for work...\n");
 		pthread_cond_signal(in->p_cond);
-		pthread_mutex_unlock(in->p_lock);
 	}
+	pthread_mutex_unlock(in->p_lock);
   
 	return 0;
 }

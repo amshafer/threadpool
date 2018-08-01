@@ -17,6 +17,7 @@
 #define JOBS 160
 
 char message[] = "Printing from thread # ";
+int kill = 0;
 
 typedef struct {
 	atomic_int flag;
@@ -26,9 +27,22 @@ void
 print_func (void *arg)
 {
 	print_t *pt = (print_t *)arg;
-	printf("%s%d\n", message, pt->flag);
+	uint64_t tid;
+	pthread_threadid_np(NULL, &tid);
+	printf("%s0x%llx - %d\n", message, tid, pt->flag);
 	pt->flag = 16;
 	free(pt);
+}
+
+void
+kill_func ()
+{
+    /*
+     * just set the global so we can end the process
+     * this could probably use locks for safety, but
+     * it's mostly unecessary
+     */
+    kill = 1;
 }
 
 int
@@ -37,14 +51,19 @@ main (int argc, char *argv[])
 	pool_t *p = pool_init(10);
 
 	printf("Launching %d jobs:\n", JOBS); 
-	for (int i = 0; i < JOBS; i++) {
+	for (int i = 0; i < JOBS - 1; i++) {
 		print_t *pt = malloc(sizeof(print_t));
 		pt->flag = i;
 		pool_exec(p, &print_func, pt);
 	}
+	pool_exec(p, &kill_func, NULL);
+	
 	printf("giving threads time to finish...\n");
 
-	sleep(1);
-  
+	while (kill == 0)
+	    continue;
+
+	pool_destroy(p);
+	
 	return 0;
 }

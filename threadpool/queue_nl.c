@@ -84,6 +84,15 @@ qnl_destroy (qnl_t *q)
 }
 
 int
+qnl_size (qnl_t *q)
+{
+	pthread_mutex_lock(q->q_lock);
+	int ret = q->qa_size;
+	pthread_mutex_unlock(q->q_lock);
+	return ret;
+}
+
+int
 qnl_enqueue (qnl_t *q, QDATA_T in)
 {
 	if (!q || !in) return QERROR;
