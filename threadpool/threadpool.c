@@ -20,7 +20,7 @@
 #ifdef WITH_LOGGING
 # define POOL_LOG(args) printf((args))
 #else
-# define POOL_LOG(args) 
+# define POOL_LOG(args)
 #endif /* WITH_LOGGING */
 
 /*
@@ -35,9 +35,7 @@ void
 thread_life (void *arg)
 {
 	if (!arg) return; 
-
 	pool_t *pl = (pool_t *)arg;
-
 
 	// continuously get work off of queue and run it
 	while (1) {
@@ -159,15 +157,15 @@ pool_exec (pool_t *in, void (*exec_f)(void *), void *arg)
 	qnl_exec_t *qe = qnl_exec_init(exec_f, arg);
 
 	// we need to follow proper lock order. pool lock, then enqueue
-	pthread_mutex_lock(in->p_lock);
 	qnl_enqueue(in->p_work, qe);
 
 	// If this is the first job signal work is available
 	if (qnl_size(in->p_work) == 1) {
 		POOL_LOG("Signaling condition var for work...\n");
+		pthread_mutex_lock(in->p_lock);
 		pthread_cond_signal(in->p_cond);
+		pthread_mutex_unlock(in->p_lock);
 	}
-	pthread_mutex_unlock(in->p_lock);
   
 	return 0;
 }

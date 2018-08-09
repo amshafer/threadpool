@@ -14,10 +14,12 @@
 #include "queue_nl.h"
 #include "threadpool.h"
 
-#define JOBS 160
+#define JOBS 128000
+#define THREADS 8
 
 char message[] = "Printing from thread # ";
 int kill = 0;
+int glob = 0;
 
 typedef struct {
 	atomic_int flag;
@@ -48,7 +50,7 @@ kill_func ()
 int
 main (int argc, char *argv[])
 {
-	pool_t *p = pool_init(10);
+	pool_t *p = pool_init(THREADS);
 
 	printf("Launching %d jobs:\n", JOBS); 
 	for (int i = 0; i < JOBS - 1; i++) {

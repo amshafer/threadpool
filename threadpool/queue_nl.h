@@ -51,11 +51,11 @@ typedef struct _qnode_t qnode_t;
  *       qnl_destroy(queue);
  */
 struct queue_t {
-	atomic_int qa_size;               // The size of the queue
-	qnode_t *q_next;                  // the head of the list
-	qnode_t *q_tail;                  // the end of the list
-	// NOTE: maybe one day I will be smart enough to make this atomic ;)
-	pthread_mutex_t *q_lock;          // Lock to add/remove from queue
+	atomic_int q_size;                // The size of the queue
+	atomic_int q_hcount;              // head node modification count
+	atomic_int q_tcount;              // tail node modification count
+	_Atomic qnode_t *q_head;          // the head of the list
+	_Atomic qnode_t *q_tail;          // the end of the list
 };
 
 typedef struct queue_t qnl_t;

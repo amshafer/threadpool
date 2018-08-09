@@ -1,6 +1,4 @@
 /*
- * A personal practice program for pthreads
- * 
  * A lockless queue.
  *
  * Austin Shafer - 2017
@@ -33,7 +31,7 @@ qnode_init (QDATA_T d, qnode_t *n)
 }
 
 /*
- * A simple free function for queue nodes.
+ * A convenient free function for queue nodes.
  * @param out the node to destroy.
  * @return 0 on success.
  */
@@ -53,13 +51,16 @@ qnl_t *
 qnl_init ()
 {
 	qnl_t *ret;
+	qnode_t *dummy;
+	
 	ret = malloc(sizeof(qnl_t));
-	ret->q_lock = malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(ret->q_lock, NULL);
+	/* 
+	 * create a dummy node so that the queue will always contain something
+	 */
+	dummy = qnode_init(NULL, NULL);
 
-	ret->qa_size = 0;
-	ret->q_next = NULL;
-	ret->q_tail = NULL;
+	ret->q_size ret->q_hcount = ret->q_tcount = 0;
+	ret->q_head = ret->q_tail = dummy;
   
 	return ret;
 }
@@ -69,49 +70,49 @@ qnl_destroy (qnl_t *q)
 {
 	if (!q) return QERROR;
 
-	pthread_mutex_destroy(q->q_lock);
-	free(q->q_lock);
-	// free items in list if we are able
-	for (qnode_t *c = q->q_next; c != NULL;) {
-		qnode_t *t = c;
-		c = c->qn_next;
-		// use custom free function since we dont know the type
-		qnode_destroy(t);
-	}
+	/*
+	 * NOTE:
+	 * The caller is responsible for emptying the queue and freeing
+	 * all nodes, as the data in the nodes could be static.
+	 */
 
 	free(q);
 	return 0;
 }
 
+/*
+ * q_size is atomic so we don't use locks
+ */
 int
 qnl_size (qnl_t *q)
 {
-	pthread_mutex_lock(q->q_lock);
-	int ret = q->qa_size;
-	pthread_mutex_unlock(q->q_lock);
+	int ret = q->q_size;
 	return ret;
 }
 
 int
 qnl_enqueue (qnl_t *q, QDATA_T in)
 {
+	qnode_t tail;
+	atomic_int tcount;
+	
 	if (!q || !in) return QERROR;
   
-	qnode_t *qn = qnode_init(in, NULL);
-  
-	pthread_mutex_lock(q->q_lock); 
-	// first elemenet case
-	if (!q->q_next) {
-		q->q_next = qn;
-		q->q_tail = q->q_next;
-	} else {
+	qnode_t *desired = qnode_init(in, NULL);
 
-		// add to end of queue
-		q->q_tail->qn_next = qn;
-		q->q_tail = qn;
+	while (1) {
+		tail = *q->q_tail;
+		tcount = q->q_tcount;
+
+		/* CAS: swap q->q_tail->next, NULL is expected, desired is the new tail */
+		if (tcount == q->q_tcount
+		    && atomic_compare_exchange(q->q_tail->qn_next, NULL, desired)) {
+			break;
+		}
 	}
-	q->qa_size++;
-	pthread_mutex_unlock(q->q_lock);
+	/* update tail pointer */
+	atomic_compare_exchange(q->q_tail, tail, desired);
+	q->q_tcount++;
 	return 0;
 }
 
@@ -121,20 +122,20 @@ qnl_dequeue (qnl_t *q)
 	if (!q) return NULL;
 	qnode_t *r = NULL;
   
-	pthread_mutex_lock(q->q_lock);
+	pthread_mutex_lock(q->q_out_lock);
 	// 0th and 1st element cases
-	if (q->qa_size == 0) {
+	if (q->q_size == 0) {
 		return NULL;
-	} else if (q->qa_size == 1) {
-		r = q->q_next;
-		q->q_next = q->q_tail = NULL;
+	} else if (q->q_size == 1) {
+		r = q->q_head;
+		q->q_head = q->q_tail = NULL;
 	} else {
-		r = q->q_next;
-		q->q_next = q->q_next->qn_next;
+		r = q->q_head;
+		q->q_head = q->q_head->qn_next;
 	}
 
-	q->qa_size--;
-	pthread_mutex_unlock(q->q_lock);
+	q->q_size--;
+	pthread_mutex_unlock(q->q_out_lock);
 	QDATA_T ret = r->qn_data;
 	// change qn_data so we dont accidently delete it
 	r->qn_data = NULL;
@@ -147,10 +148,12 @@ qnl_peek (qnl_t *q)
 {
 	if (!q) return NULL;
 
-	return q->q_next->qn_data;
+	return q->q_head->qn_data;
 }
 
 /*
+ * THREADPOOL SPECIFIC
+ *
  * Initializes a struct holding a function and its parameter struct.
  * Used to hold a queue of work to execute.
  * @param exec_f pointer to function to work with
