@@ -51,16 +51,11 @@ qnl_t *
 qnl_init ()
 {
 	qnl_t *ret;
-	qnode_t *dummy;
 	
 	ret = malloc(sizeof(qnl_t));
-	/* 
-	 * create a dummy node so that the queue will always contain something
-	 */
-	dummy = qnode_init(NULL, NULL);
 
-	ret->q_size ret->q_hcount = ret->q_tcount = 0;
-	ret->q_head = ret->q_tail = dummy;
+	ret->q_size = ret->q_hcount = ret->q_tcount = 0;
+	ret->q_head = ret->q_tail = NULL;
   
 	return ret;
 }
@@ -106,40 +101,56 @@ qnl_enqueue (qnl_t *q, QDATA_T in)
 
 		/* CAS: swap q->q_tail->next, NULL is expected, desired is the new tail */
 		if (tcount == q->q_tcount
-		    && atomic_compare_exchange(q->q_tail->qn_next, NULL, desired)) {
+		    && atomic_compare_exchange_strong(q->q_tail->qn_next, NULL, desired)) {
+			q->q_tcount++;
 			break;
 		}
 	}
 	/* update tail pointer */
 	atomic_compare_exchange(q->q_tail, tail, desired);
-	q->q_tcount++;
+	q->q_size++;
 	return 0;
 }
 
 QDATA_T
 qnl_dequeue (qnl_t *q)
 {
+	qnode_t *r, head;
+	int tcount, hcount;
+	
 	if (!q) return NULL;
-	qnode_t *r = NULL;
-  
-	pthread_mutex_lock(q->q_out_lock);
-	// 0th and 1st element cases
-	if (q->q_size == 0) {
-		return NULL;
-	} else if (q->q_size == 1) {
-		r = q->q_head;
-		q->q_head = q->q_tail = NULL;
-	} else {
-		r = q->q_head;
-		q->q_head = q->q_head->qn_next;
-	}
+	r = NULL;
 
-	q->q_size--;
-	pthread_mutex_unlock(q->q_out_lock);
+	while (1) {
+		head = *q->q_head;
+		hcount = q->q_hcount;
+		tail = *q->q_tail;
+		tcount = q->q_tcount;
+
+		/* if queue is empty or being emptied, return NULL */
+		if (!tail || !head)
+			return NULL;
+
+		/* if there is only one node in the queue, null tail first, else loop */
+		if (head == tail && tcount == q->q_tcount
+			&& !atomic_compare_exchange_strong(q->q_tail, tail, NULL)) {
+			q->q_hcount++;
+			continue;
+		}
+
+		/* shift q_head down one node */
+		if (hcount == q->q_hcount
+		    && atomic_compare_exchange_strong(q->q_head, head, head->q_next)) {
+			q->q_hcount++;
+			break;
+		}
+	}
+	
 	QDATA_T ret = r->qn_data;
 	// change qn_data so we dont accidently delete it
 	r->qn_data = NULL;
 	qnode_destroy(r);
+	q->q_size--;
 	return ret;
 }
 
