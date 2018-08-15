@@ -40,6 +40,15 @@ struct _qnode_t {
 // for ease of writing
 typedef struct _qnode_t qnode_t;
 
+/*
+ * The atomic endpoints of the queue
+ *
+ * This has to be twice the pointer size for a double CAS.
+ */
+typedef struct {
+	uint64_t qe_count;                 // the ABA modification count
+	qnode_t *qe_node;                 // the first/last node in the queue
+} qend_t;
 
 /*
  * The queue struture. This is what the user holds a reference to.
@@ -52,10 +61,8 @@ typedef struct _qnode_t qnode_t;
  */
 struct queue_t {
 	atomic_int q_size;                // The size of the queue
-	atomic_int q_hcount;              // head node modification count
-	atomic_int q_tcount;              // tail node modification count
-	_Atomic qnode_t *q_head;          // the head of the list
-	_Atomic qnode_t *q_tail;          // the end of the list
+	_Atomic qend_t q_head;            // the head of the list
+	_Atomic qend_t q_tail;            // the end of the list
 };
 
 typedef struct queue_t qnl_t;

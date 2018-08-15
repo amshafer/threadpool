@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include "queue_nl.h"
 
 /*
@@ -40,9 +41,10 @@ qnode_destroy (qnode_t *out)
 {
 	if (!out) return QERROR;
 
-	if (out->qn_data) {
-		Q_FREE(out->qn_data);
-	}
+	/*
+	 * The caller must free qn_data
+	 */
+
 	free(out);
 	return 0;
 }
@@ -51,11 +53,18 @@ qnl_t *
 qnl_init ()
 {
 	qnl_t *ret;
+	qend_t head, tail;
 	
 	ret = malloc(sizeof(qnl_t));
 
-	ret->q_size = ret->q_hcount = ret->q_tcount = 0;
-	ret->q_head = ret->q_tail = NULL;
+	ret->q_size = 0;
+
+	/* initialize endpoints for atomic operations */
+	head.qe_count = tail.qe_count = 0;
+	head.qe_node = tail.qe_node = NULL;
+
+	atomic_init(&ret->q_head, head);
+	atomic_init(&ret->q_tail, tail);
   
 	return ret;
 }
@@ -85,29 +94,37 @@ qnl_size (qnl_t *q)
 	return ret;
 }
 
+/*
+ * Enqueue a new node on the queue's tail
+ * 
+ */
 int
 qnl_enqueue (qnl_t *q, QDATA_T in)
 {
-	qnode_t tail;
-	atomic_int tcount;
+	qend_t expected, new;
 	
 	if (!q || !in) return QERROR;
   
 	qnode_t *desired = qnode_init(in, NULL);
 
-	while (1) {
-		tail = *q->q_tail;
-		tcount = q->q_tcount;
+	do {
+		new = expected = atomic_load(&q->q_tail);
+		new.qe_node = desired;
+		new.qe_count++;
+		/* set new tail */
+	} while (!atomic_compare_exchange_weak(&q->q_tail, &expected, new));
 
-		/* CAS: swap q->q_tail->next, NULL is expected, desired is the new tail */
-		if (tcount == q->q_tcount
-		    && atomic_compare_exchange_strong(q->q_tail->qn_next, NULL, desired)) {
-			q->q_tcount++;
-			break;
-		}
-	}
-	/* update tail pointer */
-	atomic_compare_exchange(q->q_tail, tail, desired);
+	/* update old tail's next */
+	if (expected.qe_node)
+		expected.qe_node->qn_next = desired;
+	
+	/* if this is the first node, update head */
+	do {
+		expected = atomic_load(&q->q_head);
+		new.qe_count = expected.qe_count + 1;
+	} while (!expected.qe_node &&
+		!atomic_compare_exchange_weak(&q->q_head, &expected, new));
+
 	q->q_size++;
 	return 0;
 }
@@ -115,41 +132,25 @@ qnl_enqueue (qnl_t *q, QDATA_T in)
 QDATA_T
 qnl_dequeue (qnl_t *q)
 {
-	qnode_t *r, head;
-	int tcount, hcount;
+	qend_t new, expected;
+	QDATA_T ret = NULL;
+	qnode_t *r = NULL;
 	
 	if (!q) return NULL;
-	r = NULL;
 
-	while (1) {
-		head = *q->q_head;
-		hcount = q->q_hcount;
-		tail = *q->q_tail;
-		tcount = q->q_tcount;
+	do {
+		new = expected = atomic_load(&q->q_head);
+		new.qe_node = new.qe_node->qn_next;
+		new.qe_count++;
+	} while (!atomic_compare_exchange_weak(&q->q_head, &expected, new));
 
-		/* if queue is empty or being emptied, return NULL */
-		if (!tail || !head)
-			return NULL;
-
-		/* if there is only one node in the queue, null tail first, else loop */
-		if (head == tail && tcount == q->q_tcount
-			&& !atomic_compare_exchange_strong(q->q_tail, tail, NULL)) {
-			q->q_hcount++;
-			continue;
-		}
-
-		/* shift q_head down one node */
-		if (hcount == q->q_hcount
-		    && atomic_compare_exchange_strong(q->q_head, head, head->q_next)) {
-			q->q_hcount++;
-			break;
-		}
+	/* extract data and free node */
+	if (expected.qe_node) {
+		r = expected.qe_node;
+		ret = r->qn_data;
+		qnode_destroy(r);
 	}
-	
-	QDATA_T ret = r->qn_data;
-	// change qn_data so we dont accidently delete it
-	r->qn_data = NULL;
-	qnode_destroy(r);
+
 	q->q_size--;
 	return ret;
 }
@@ -157,9 +158,13 @@ qnl_dequeue (qnl_t *q)
 QDATA_T
 qnl_peek (qnl_t *q)
 {
+	qend_t head;
+	
 	if (!q) return NULL;
 
-	return q->q_head->qn_data;
+	head = atomic_load(&q->q_head);
+
+	return head.qe_node->qn_data;
 }
 
 /*

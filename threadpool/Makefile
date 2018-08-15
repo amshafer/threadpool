@@ -3,7 +3,7 @@ CFLAGS = -g -Wall -pthread -std=c11
 
 
 
-all: queue threadpool
+all: queue threadpool queue_test
 	${CC} ${CFLAGS} lthread.c -o lthread
 
 queue:
@@ -12,8 +12,10 @@ queue:
 threadpool:
 	${CC} ${CFLAGS} -fPIC -shared threadpool.c queue_nl.o -o libthreadpool.so
 
-test: all
+queue_test: queue
 	${CC} ${CFLAGS} queue_test.c queue_nl.o -o queue_test
+
+test: all queue_test
 	${CC} ${CFLAGS} thread_test.c -L${PWD} -lthreadpool -o thread_test
 	./thread_test
 

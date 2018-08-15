@@ -18,47 +18,23 @@ thread_func () {
 }
 
 void
-print_queue (qnl_t *q)
+print_queue (void *i)
 {
-  //pthread_t cur;
-  printf("Printing Queue:\n");
-  /*while ((cur = qnl_dequeue(q))) {
-    printf("%lu\n", (unsigned long)cur);
-  }*/
+  printf("Printing entry: %p\n", i);
 }
 
-void
-pthread_test (qnl_t *q)
-{
-  /*
-  pthread_t tid[SIZE];
-  for (int i = 0; i < SIZE; i++) {
-    pthread_create(&tid[i], NULL, (void *)&thread_func, NULL);
-    printf("Order added to queue #%d %lu\n", i, (unsigned long)tid[i]);
-    qnl_enqueue(q, tid[i]);
-  }
-
-  print_queue(q);
-  
-  for (int i = 0; i < SIZE; i++) {
-    pthread_join(tid[i], NULL);
-  } */ 
-}
 
 void
 func_test (qnl_t *q)
 {
-  for (int i = 0; i < SIZE / 2; i++) {
-    qnl_enqueue(q, qnl_exec_init(&print_queue));
-    qnl_enqueue(q, qnl_exec_init(&pthread_test));
+  for (int i = 0; i < SIZE; i++) {
+    qnl_enqueue(q, qnl_exec_init(&print_queue, i));
   }
 
-  printf("print_queue = %s\n", (char *)&print_queue);
-  printf("pthread_test = %s\n", (char *)&pthread_test);
-
-  printf("Printing queue:\n");
+  printf("Printing all queue contents:\n");
   for (int i = 0; i < SIZE; i++) {
-    printf("%s\n", (char *)qnl_dequeue(q));
+    qnl_exec_t *e = qnl_dequeue(q);
+    e->qe_func(e->qe_arg);
   }
 }
 
