@@ -10,7 +10,7 @@
 #include <stdatomic.h>
 #include "queue_nl.h"
 
-#define SIZE 8
+#define SIZE 18
 
 void
 thread_func () {
