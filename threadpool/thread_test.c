@@ -11,7 +11,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdatomic.h>
-#include <stdint.h>
 #include "queue_nl.h"
 #include "threadpool.h"
 
@@ -30,9 +29,8 @@ void
 print_func (void *arg)
 {
 	print_t *pt = (print_t *)arg;
-	uint64_t tid;
-	pthread_threadid_np(NULL, &tid);
-	printf("%s0x%llx - %d\n", message, tid, pt->flag);
+	uint64_t tid = 0;
+	printf("%s0x%lx - %d\n", message, tid, pt->flag);
 	pt->flag = 16;
 	free(pt);
 }

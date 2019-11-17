@@ -7,8 +7,8 @@ extern crate bindgen;
 
 fn main () {
     // tell cargo to link with libthreadpool.so
-    println!("cargo:rustc-env=DYLD_LIBRARY_PATH=/Users/AShafer/git/threadbox/threadpool/");
-    println!("cargo:rustc-link-search=native=/Users/AShafer/git/threadbox/threadpool/");
+    println!("cargo:rustc-env=LD_LIBRARY_PATH=../threadpool/");
+    println!("cargo:rustc-link-search=native=../threadpool/");
     println!("cargo:rustc-link-lib=dylib=threadpool");
 
     // update the generated bindings if the wrapper changes

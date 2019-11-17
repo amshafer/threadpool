@@ -2,9 +2,10 @@
 //
 // Austin Shafer - 2019
 
-use std::{thread,time,ptr};
+use std::{thread,time,ffi::c_void};
 mod threadpool_bindings;
 use threadpool_bindings::*;
+use std::mem;
 
 #[derive(Debug)]
 struct ThreadPool {
@@ -23,8 +24,7 @@ impl ThreadPool {
         let ta_ptr = arg1 as *mut ThreadArg<T>;
         // dereference the raw pointer, and mutably borrow its contents
         let ta_ref = &mut *ta_ptr;
-        
-        println!("Hello from thread!");
+        // now we have ownership of the object that we mem::forgot about earlier
         
         // to call the function stored in `func`, surround the field access with parentheses
         (ta_ref.func)(ta_ref.arg.as_mut());
@@ -57,7 +57,11 @@ impl ThreadPool {
             });
             
             pool_exec(self.c_pool, Some(ThreadPool::thread_fn::<T>),
-                      &mut thread_arg as *mut _ as *mut ::std::ffi::c_void);
+                      &mut *thread_arg as *mut _ as *mut c_void);
+
+            // forget the box so it doesn't drop and free the struct
+            // we are trying to pass to C
+            mem::forget(thread_arg);
         }
     }
 }
@@ -72,12 +76,12 @@ fn worker(arg: Option<&mut i32>) {
 fn main() {
 
     let mut pool = ThreadPool::pool_init(4).unwrap();
-    let mut thread_arg: i32 = 16;
 
-    for i in 0..1 {
+    for i in 0..4 {
         let fp: fn(Option<&mut i32>) = worker;
         let bfp = Box::new(fp);
-        pool.exec(bfp, None);
+        pool.exec(bfp, Some(i));
+        thread::sleep(time::Duration::from_millis(4));
     }
     
     pool.destroy();
