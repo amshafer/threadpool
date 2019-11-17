@@ -1,5 +1,5 @@
-CC = clang
-CFLAGS = -g -Wall -pthread -std=c11
+CC = gcc
+CFLAGS = -g -Wall -pthread -std=c11 -latomic
 
 
 

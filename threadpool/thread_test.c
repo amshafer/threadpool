@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdatomic.h>
+#include <stdint.h>
 #include "queue_nl.h"
 #include "threadpool.h"
 

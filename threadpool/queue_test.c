@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stdint.h>
 #include "queue_nl.h"
 
 #define SIZE 18
